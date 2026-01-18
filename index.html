@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street View Navigation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        img {
+            width: 500px;
+            height: 500px;
+            object-fit: cover;
+        }
+        .container {
+            background-color: lightgray;
+            width: 700px;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        button {
+            position: absolute;
+            border-radius: 50%;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: white;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #333;
+            color: white;
+        }
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .forward {
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .back {
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .left {
+            top: 50%;
+            left: 50px;
+            transform: translateY(-50%);
+        }
+        .right {
+            top: 50%;
+            right: 50px;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="forward">↑</button>
+        <button class="back">↓</button>
+        <button class="left" style="display: none;">←</button>
+        <button class="right" style="display: none;">→</button>
+        <img alt="Street View">
+    </div>
+</body>
+<script>
+    const img = document.querySelector('img');
+    const forwardBtn = document.querySelector('.forward');
+    const backBtn = document.querySelector('.back');
+    const leftBtn = document.querySelector('.left');
+    const rightBtn = document.querySelector('.right');
+    
+    let imgIndex = 0;
+    let imgList = ['1', '2', '3', '4', '5', '5l', '6', '6l', '6r'];
+    
+    // Get list of main images (without l or r suffix)
+    function getMainImages() {
+        return imgList.filter(name => !name.endsWith('l') && !name.endsWith('r'));
+    }
+    
+    function isMainImage(imageName) {
+        return !imageName.endsWith('l') && !imageName.endsWith('r');
+    }
+    
+    function getCurrentImageName() {
+        return imgList[imgIndex];
+    }
+    
+    function getBaseImageName() {
+        return getCurrentImageName().replace(/[lr]$/, '');
+    }
+    
+    function hasLeftImage() {
+        const baseName = getBaseImageName();
+        return imgList.includes(baseName + 'l');
+    }
+    
+    function hasRightImage() {
+        const baseName = getBaseImageName();
+        return imgList.includes(baseName + 'r');
+    }
+    
+    function getMainImageIndex() {
+        // Get the index of the main (center) image for current position
+        const baseName = getBaseImageName();
+        return imgList.indexOf(baseName);
+    }
+    
+    function updateImage() {
+        img.src = `${imgList[imgIndex]}.jpeg`;
+        
+        const currentName = getCurrentImageName();
+        const isOnLeftView = currentName.endsWith('l');
+        const isOnRightView = currentName.endsWith('r');
+        const isOnMainView = !isOnLeftView && !isOnRightView;
+        
+        // On main view: show left/right if available
+        if (isOnMainView) {
+            leftBtn.style.display = hasLeftImage() ? 'block' : 'none';
+            rightBtn.style.display = hasRightImage() ? 'block' : 'none';
+        }
+        // On left view: show only right arrow to go back to center
+        else if (isOnLeftView) {
+            leftBtn.style.display = 'none';
+            rightBtn.style.display = 'block';
+        }
+        // On right view: show only left arrow to go back to center
+        else if (isOnRightView) {
+            leftBtn.style.display = 'block';
+            rightBtn.style.display = 'none';
+        }
+        
+        // Disable forward/back buttons if at the end/start of main images
+        const mainImages = getMainImages();
+        const currentMainImage = getBaseImageName();
+        const mainImagePosition = mainImages.indexOf(currentMainImage);
+        
+        forwardBtn.disabled = mainImagePosition >= mainImages.length - 1;
+        backBtn.disabled = mainImagePosition <= 0;
+    }
+    
+    forwardBtn.addEventListener('click', () => {
+        const mainImages = getMainImages();
+        const currentMainImage = getBaseImageName();
+        const currentPosition = mainImages.indexOf(currentMainImage);
+        
+        if (currentPosition < mainImages.length - 1) {
+            const nextMainImage = mainImages[currentPosition + 1];
+            imgIndex = imgList.indexOf(nextMainImage);
+            updateImage();
+        }
+    });
+    
+    backBtn.addEventListener('click', () => {
+        const mainImages = getMainImages();
+        const currentMainImage = getBaseImageName();
+        const currentPosition = mainImages.indexOf(currentMainImage);
+        
+        if (currentPosition > 0) {
+            const prevMainImage = mainImages[currentPosition - 1];
+            imgIndex = imgList.indexOf(prevMainImage);
+            updateImage();
+        }
+    });
+    
+    leftBtn.addEventListener('click', () => {
+        const currentName = getCurrentImageName();
+        
+        // If on right view, go back to center
+        if (currentName.endsWith('r')) {
+            imgIndex = getMainImageIndex();
+        }
+        // If on main view, go to left view
+        else {
+            const baseName = getBaseImageName();
+            const leftImageName = baseName + 'l';
+            const leftIndex = imgList.indexOf(leftImageName);
+            if (leftIndex !== -1) {
+                imgIndex = leftIndex;
+            }
+        }
+        updateImage();
+    });
+    
+    rightBtn.addEventListener('click', () => {
+        const currentName = getCurrentImageName();
+        
+        // If on left view, go back to center
+        if (currentName.endsWith('l')) {
+            imgIndex = getMainImageIndex();
+        }
+        // If on main view, go to right view
+        else {
+            const baseName = getBaseImageName();
+            const rightImageName = baseName + 'r';
+            const rightIndex = imgList.indexOf(rightImageName);
+            if (rightIndex !== -1) {
+                imgIndex = rightIndex;
+            }
+        }
+        updateImage();
+    });
+    
+    // Initialize with the first image
+    updateImage();
+</script>
+</html>
