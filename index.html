@@ -41,7 +41,6 @@
         .status-message { padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; display: none; }
         .status-message.success { background: rgba(40, 167, 69, 0.3); color: #90ee90; }
         .status-message.error { background: rgba(220, 53, 69, 0.3); color: #ff6b6b; }
-        #graphData { width: 100%; height: 200px; margin-top: 10px; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; color: white; font-family: monospace; font-size: 11px; }
         .node-list { max-height: 150px; overflow-y: auto; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 5px; margin-top: 10px; }
         .node-item { padding: 8px; margin: 5px 0; background: rgba(67, 133, 245, 0.2); border-radius: 4px; cursor: pointer; transition: all 0.2s ease; }
         .node-item:hover { background: rgba(67, 133, 245, 0.4); transform: translateX(5px); }
@@ -72,23 +71,14 @@
         #closeCameraBtn { background: rgba(220, 53, 69, 0.9); color: white; }
         .upload-camera-choice { display: flex; gap: 10px; margin-top: 10px; }
         .upload-camera-choice button { flex: 1; padding: 12px; font-size: 14px; }
-        #githubModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 350; justify-content: center; align-items: center; }
-        #githubModal.active { display: flex; }
-        .github-container { background: rgba(20, 20, 20, 0.98); padding: 40px; border-radius: 15px; width: 90%; max-width: 500px; }
-        .github-container h3 { color: #4285f5; margin-bottom: 20px; text-align: center; }
-        .github-info { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
-        .github-info ol { margin-left: 20px; margin-bottom: 15px; }
-        .github-info li { margin-bottom: 8px; }
-        #githubConfigForm input { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 14px; margin-bottom: 15px; }
-        #githubConfigForm input:focus { outline: none; border-color: #4285f5; }
-        .github-buttons { display: flex; gap: 10px; justify-content: center; }
-        .github-buttons button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .github-buttons .save-btn { background: rgba(40, 167, 69, 0.9); color: white; }
-        .github-buttons .cancel-btn { background: rgba(108, 117, 125, 0.9); color: white; }
-        .github-buttons .test-btn { background: rgba(67, 133, 245, 0.9); color: white; }
-        .github-status { margin-top: 15px; padding: 10px; border-radius: 5px; font-size: 14px; display: none; }
-        .github-status.success { background: rgba(40, 167, 69, 0.2); color: #90ee90; display: block; }
-        .github-status.error { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; display: block; }
+        #exportModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 350; justify-content: center; align-items: center; }
+        #exportModal.active { display: flex; }
+        .export-container { background: rgba(20, 20, 20, 0.98); padding: 40px; border-radius: 15px; width: 90%; max-width: 500px; }
+        .export-container h3 { color: #4285f5; margin-bottom: 20px; text-align: center; }
+        .export-option { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s ease; }
+        .export-option:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+        .export-option h4 { color: #66a3ff; margin-bottom: 8px; }
+        .export-option p { color: #ccc; font-size: 14px; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -187,10 +177,9 @@
             <button class="admin-btn success" onclick="addNewNode()">Create</button>
         </div>
         <div class="admin-section">
-            <h3>⚙️ GitHub Integration</h3>
-            <button class="admin-btn" onclick="openGitHubConfig()">🔧 Configure GitHub</button>
-            <button class="admin-btn" onclick="openGitHubConfig()">💾 Sync Images to GitHub</button>
-            <div id="githubStatus" style="margin-top: 15px; font-size: 12px; color: #ccc;"></div>
+            <h3>💾 Export Data</h3>
+            <button class="admin-btn" onclick="openExportModal()">📤 Export All Data</button>
+            <button class="admin-btn success" onclick="exportData()">💾 Backup Now</button>
         </div>
         <div class="admin-section"><h3>📋 All Nodes</h3><div class="node-list" id="nodeList"></div></div>
         <div id="statusMessage" class="status-message"></div>
@@ -221,39 +210,33 @@
             </div>
         </div>
     </div>
-    <div id="githubModal">
-        <div class="github-container">
-            <h3>🔧 GitHub Integration</h3>
-            <div class="github-info">
-                <p>To store images in your GitHub repository:</p>
-                <ol>
-                    <li>Create a GitHub Personal Access Token with <code>repo</code> permissions</li>
-                    <li>Create a repository (or use existing)</li>
-                    <li>Enter details below</li>
-                </ol>
-                <p><strong>Format:</strong> <code>https://github.com/username/repo/images/filename.jpg</code></p>
+    <div id="exportModal">
+        <div class="export-container">
+            <h3>📤 Export Data</h3>
+            <div class="export-option" onclick="exportAllData()">
+                <h4>📊 JSON Data + Images</h4>
+                <p>Export complete navigation data with all images</p>
             </div>
-            <form id="githubConfigForm" onsubmit="saveGitHubConfig(); return false;">
-                <input type="text" id="githubRepo" placeholder="username/repository" required>
-                <input type="text" id="githubBranch" placeholder="Branch (default: main)" value="main">
-                <input type="password" id="githubToken" placeholder="GitHub Personal Access Token" required>
-                <div class="github-buttons">
-                    <button type="submit" class="save-btn">💾 Save Configuration</button>
-                    <button type="button" class="test-btn" onclick="testGitHubConnection()">🔗 Test Connection</button>
-                    <button type="button" class="cancel-btn" onclick="closeGitHubModal()">❌ Cancel</button>
-                </div>
-            </form>
-            <div id="githubTestStatus" class="github-status"></div>
+            <div class="export-option" onclick="exportImagesOnly()">
+                <h4>🖼️ All Images Only</h4>
+                <p>Download all images as separate files</p>
+            </div>
+            <div class="export-option" onclick="exportStructureOnly()">
+                <h4>🗺️ Structure Only</h4>
+                <p>Export just the node connections (no images)</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="admin-btn danger" onclick="closeExportModal()">❌ Close</button>
+            </div>
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script>
 let g={},loc="1",nCnt=1000,preloadedImages={},cam=null,capData=null,capMode=null,capDir=null;
 let uploadMode=null,uploadDir=null;
-let githubConfig={repo:'',token:'',branch:'main'};
 const el={img:document.getElementById('currentImage'),locId:document.getElementById('locationId'),load:document.getElementById('loading'),fwd:document.getElementById('forwardBtn'),bwd:document.getElementById('backwardBtn'),left:document.getElementById('leftBtn'),right:document.getElementById('rightBtn'),adminP:document.getElementById('adminPanel'),adminT:document.getElementById('adminToggle'),preload:document.getElementById('preloadContainer'),camM:document.getElementById('cameraModal'),camV:document.getElementById('cameraVideo'),capC:document.getElementById('capturedCanvas'),capP:document.getElementById('capturedPreview')};
 
-// Initial graph data
+// Initial graph data - using local images from images folder
 for(let i=1;i<=10;i++)g[String(i)]={image:`images/${i}.jpeg`,forward:i<10?String(i+1):null,backward:i>1?String(i-1):null,left:null,right:null};
 
 function preloadImage(src){if(!src||preloadedImages[src])return;const img=new Image();img.src=src;preloadedImages[src]=img;el.preload.appendChild(img);}
@@ -261,9 +244,6 @@ function preloadAdjacentImages(){const n=g[loc];if(!n)return;if(n.forward&&g[n.f
 async function init(){
     localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();preloadAdjacentImages();});
     localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});
-    localforage.getItem('githubConfig').then(cfg=>{
-        if(cfg){githubConfig=cfg;updateGitHubStatus();}
-    });
     attachListeners();
 }
 function updateView(){const n=g[loc];if(!n)return;if(preloadedImages[n.image]){el.img.src=n.image;el.load.style.display='none';el.img.style.display='block';}else{el.load.style.display='block';el.img.style.display='none';el.img.onload=()=>{el.load.style.display='none';el.img.style.display='block';preloadedImages[n.image]=el.img;};el.img.onerror=()=>el.load.textContent='Error';el.img.src=n.image;}el.locId.textContent=loc;updateBtn(el.fwd,n.forward);updateBtn(el.bwd,n.backward);updateBtn(el.left,n.left);updateBtn(el.right,n.right);updateAdminPanel();preloadAdjacentImages();}
@@ -278,27 +258,13 @@ async function openCamera(){try{cam=await navigator.mediaDevices.getUserMedia({v
 function captureImage(){el.capC.width=el.camV.videoWidth;el.capC.height=el.camV.videoHeight;const ctx=el.capC.getContext('2d');ctx.drawImage(el.camV,0,0);const maxSize=1200;let width=el.capC.width;let height=el.capC.height;if(width>maxSize||height>maxSize){const canvas2=document.createElement('canvas');if(width>height){canvas2.height=(height/width)*maxSize;canvas2.width=maxSize;}else{canvas2.width=(width/height)*maxSize;canvas2.height=maxSize;}canvas2.getContext('2d').drawImage(el.capC,0,0,canvas2.width,canvas2.height);capData=canvas2.toDataURL('image/jpeg',0.85);}else{capData=el.capC.toDataURL('image/jpeg',0.85);}el.capP.src=capData;el.camV.style.display='none';el.capP.style.display='block';document.getElementById('captureBtn').style.display='none';document.getElementById('retakeBtn').style.display='inline-block';document.getElementById('useCaptureBtn').style.display='inline-block';}
 function retakeImage(){el.capP.style.display='none';el.camV.style.display='block';document.getElementById('captureBtn').style.display='inline-block';document.getElementById('retakeBtn').style.display='none';document.getElementById('useCaptureBtn').style.display='none';capData=null;}
 
-async function useCapturedImage(){
+function useCapturedImage(){
     if(!capData){showStatus('No image captured','error');return;}
     const nid=`node_${nCnt++}`;
     localforage.setItem('nodeCounter',nCnt);
     
-    // Upload to GitHub if configured
-    let githubUrl = capData; // fallback to data URL
-    if(githubConfig.token && githubConfig.repo){
-        try{
-            const timestamp = Date.now();
-            const filename = `${nid}_${timestamp}.jpg`;
-            githubUrl = await uploadToGitHub(capData, filename);
-            showStatus(`Image uploaded to GitHub: ${filename}`,'success');
-        }catch(err){
-            console.error('GitHub upload failed:',err);
-            showStatus('GitHub upload failed, using local storage','error');
-        }
-    }
-    
     if(capMode==='direction'){
-        g[nid]={image:githubUrl,forward:null,backward:null,left:null,right:null};
+        g[nid]={image:capData,forward:null,backward:null,left:null,right:null};
         g[loc][capDir]=nid;
         const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};
         g[nid][rev[capDir]]=loc;
@@ -307,7 +273,7 @@ async function useCapturedImage(){
         updateNodeList();
         showStatus(`${capDir} created: ${nid}`,'success');
     }else if(capMode==='newNode'){
-        g[nid]={image:githubUrl,forward:null,backward:null,left:null,right:null};
+        g[nid]={image:capData,forward:null,backward:null,left:null,right:null};
         document.getElementById('newNodeId').value=nid;
         document.getElementById('newNodeImage').value='Captured';
         save();
@@ -328,7 +294,7 @@ function updateDirStatus(d,l){const s=document.getElementById(`${d}Status`);s.in
 function setDirection(d){const t=document.getElementById(`${d}Input`).value.trim();if(!t){showStatus('Enter ID','error');return;}if(!g[t]){showStatus('Node not found','error');return;}g[loc][d]=t;save();updateView();showStatus(`${d} set to ${t}`,'success');}
 function removeDirection(d){g[loc][d]=null;save();updateView();showStatus(`${d} removed`,'success');}
 
-async function addNewNode(){
+function addNewNode(){
     const id=document.getElementById('newNodeId').value.trim();
     const img=document.getElementById('newNodeImage').value.trim();
     if(!id){showStatus('Enter ID','error');return;}
@@ -351,13 +317,13 @@ function showStatus(m,t){const s=document.getElementById('statusMessage');s.text
 function uploadForDirection(d){uploadMode='direction';uploadDir=d;document.getElementById('fileUpload').click();}
 function uploadForNewNode(){uploadMode='newNode';uploadDir=null;document.getElementById('fileUpload').click();}
 
-async function handleFileUpload(e){
+function handleFileUpload(e){
     const file=e.target.files[0];
     if(!file){return;}
     const reader=new FileReader();
-    reader.onload=async function(ev){
+    reader.onload=function(ev){
         const img=new Image();
-        img.onload=async function(){
+        img.onload=function(){
             const canvas=document.createElement('canvas');
             const ctx=canvas.getContext('2d');
             let width=img.width;
@@ -380,22 +346,8 @@ async function handleFileUpload(e){
             const nid=`node_${nCnt++}`;
             localforage.setItem('nodeCounter',nCnt);
             
-            // Upload to GitHub if configured
-            let finalImgUrl = imgData;
-            if(githubConfig.token && githubConfig.repo){
-                try{
-                    const timestamp = Date.now();
-                    const filename = `${nid}_${timestamp}.jpg`;
-                    finalImgUrl = await uploadToGitHub(imgData, filename);
-                    showStatus(`Image uploaded to GitHub: ${filename}`,'success');
-                }catch(err){
-                    console.error('GitHub upload failed:',err);
-                    showStatus('GitHub upload failed, using local storage','error');
-                }
-            }
-            
             if(uploadMode==='direction'){
-                g[nid]={image:finalImgUrl,forward:null,backward:null,left:null,right:null};
+                g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};
                 g[loc][uploadDir]=nid;
                 const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};
                 g[nid][rev[uploadDir]]=loc;
@@ -404,7 +356,7 @@ async function handleFileUpload(e){
                 updateNodeList();
                 showStatus(`${uploadDir} created: ${nid}`,'success');
             }else if(uploadMode==='newNode'){
-                g[nid]={image:finalImgUrl,forward:null,backward:null,left:null,right:null};
+                g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};
                 document.getElementById('newNodeId').value=nid;
                 document.getElementById('newNodeImage').value='Uploaded';
                 save();
@@ -418,113 +370,119 @@ async function handleFileUpload(e){
     reader.readAsDataURL(file);
 }
 
-// GitHub Integration Functions
-function openGitHubConfig(){
-    document.getElementById('githubModal').classList.add('active');
-    document.getElementById('githubRepo').value = githubConfig.repo;
-    document.getElementById('githubBranch').value = githubConfig.branch;
-    document.getElementById('githubToken').value = githubConfig.token || '';
+// Export Functions
+function openExportModal(){
+    document.getElementById('exportModal').classList.add('active');
 }
 
-function closeGitHubModal(){
-    document.getElementById('githubModal').classList.remove('active');
+function closeExportModal(){
+    document.getElementById('exportModal').classList.remove('active');
 }
 
-async function saveGitHubConfig(){
-    const repo = document.getElementById('githubRepo').value.trim();
-    const branch = document.getElementById('githubBranch').value.trim() || 'main';
-    const token = document.getElementById('githubToken').value.trim();
+function exportAllData(){
+    // Create a clean copy without circular references
+    const exportData = JSON.parse(JSON.stringify(g));
     
-    if(!repo || !token){
-        showGitHubStatus('Please fill all fields', 'error');
-        return;
-    }
+    // Create a zip file with all data
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
     
-    githubConfig = {repo, branch, token};
-    await localforage.setItem('githubConfig', githubConfig);
-    updateGitHubStatus();
-    showGitHubStatus('Configuration saved successfully!', 'success');
+    // Download JSON
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(dataBlob);
+    a.download = `campus_nav_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Also extract and save images
+    extractAndSaveImages();
+    
+    showStatus('All data exported successfully!', 'success');
+    closeExportModal();
 }
 
-function updateGitHubStatus(){
-    const statusEl = document.getElementById('githubStatus');
-    if(githubConfig.repo && githubConfig.token){
-        statusEl.innerHTML = `✅ GitHub: ${githubConfig.repo} (${githubConfig.branch})`;
-    }else{
-        statusEl.innerHTML = `❌ GitHub not configured`;
-    }
+function exportImagesOnly(){
+    extractAndSaveImages();
+    showStatus('All images exported!', 'success');
+    closeExportModal();
 }
 
-async function testGitHubConnection(){
-    if(!githubConfig.repo || !githubConfig.token){
-        showGitHubStatus('Please configure GitHub first', 'error');
-        return;
-    }
-    
-    try{
-        showGitHubStatus('Testing connection...', '');
-        const testContent = btoa('Test connection from Campus Navigation System');
-        const response = await fetch(`https://api.github.com/repos/${githubConfig.repo}/contents/test.txt`,{
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${githubConfig.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: 'Test connection',
-                content: testContent,
-                branch: githubConfig.branch
-            })
-        });
-        
-        if(response.ok){
-            showGitHubStatus('✅ Connection successful!', 'success');
-        }else{
-            const error = await response.json();
-            showGitHubStatus(`❌ Connection failed: ${error.message || response.status}`, 'error');
-        }
-    }catch(err){
-        showGitHubStatus(`❌ Error: ${err.message}`, 'error');
-    }
-}
-
-async function uploadToGitHub(dataUrl, filename){
-    if(!githubConfig.repo || !githubConfig.token){
-        throw new Error('GitHub not configured');
-    }
-    
-    // Convert data URL to base64
-    const base64Data = dataUrl.split(',')[1];
-    const path = `images/${filename}`;
-    
-    const response = await fetch(`https://api.github.com/repos/${githubConfig.repo}/contents/${path}`,{
-        method: 'PUT',
-        headers: {
-            'Authorization': `token ${githubConfig.token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            message: `Add image: ${filename}`,
-            content: base64Data,
-            branch: githubConfig.branch
-        })
+function exportStructureOnly(){
+    // Create structure-only export (replace image data with filenames)
+    const structureData = {};
+    Object.keys(g).forEach(key => {
+        structureData[key] = {
+            forward: g[key].forward,
+            backward: g[key].backward,
+            left: g[key].left,
+            right: g[key].right,
+            image: g[key].image.startsWith('data:') ? 'data_image.jpg' : g[key].image
+        };
     });
     
-    if(!response.ok){
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
-    }
+    const dataStr = JSON.stringify(structureData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
     
-    const result = await response.json();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(dataBlob);
+    a.download = `campus_structure_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     
-    // Construct raw GitHub URL
-    return `https://raw.githubusercontent.com/${githubConfig.repo}/${githubConfig.branch}/images/${filename}`;
+    showStatus('Structure exported!', 'success');
+    closeExportModal();
 }
 
-function showGitHubStatus(message, type){
-    const statusEl = document.getElementById('githubTestStatus');
-    statusEl.textContent = message;
-    statusEl.className = `github-status ${type}`;
+function extractAndSaveImages(){
+    // Extract all data URLs and save them as image files
+    Object.keys(g).forEach(nodeId => {
+        const imageData = g[nodeId].image;
+        if(imageData.startsWith('data:image/')) {
+            // Convert data URL to blob
+            const byteString = atob(imageData.split(',')[1]);
+            const mimeString = imageData.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([ab], {type: mimeString});
+            
+            // Create download link
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${nodeId}_image.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up
+            setTimeout(() => URL.revokeObjectURL(a.href), 100);
+        }
+    });
+}
+
+function exportData(){
+    // Simple backup export
+    const backup = {
+        graph: g,
+        nodeCounter: nCnt,
+        exportDate: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(backup, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(dataBlob);
+    a.download = `campus_backup_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showStatus('Backup created!', 'success');
 }
 
 window.onload=init;
