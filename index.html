@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,6 +9,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background: #000; }
         #imageContainer { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #1a1a1a; }
         #currentImage { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #preloadContainer { display: none; }
         #locationInfo { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px 25px; border-radius: 10px; font-size: 18px; font-weight: bold; z-index: 100; backdrop-filter: blur(10px); }
         #controls { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); z-index: 100; }
         .nav-grid { display: grid; grid-template-columns: 100px 100px 100px; grid-template-rows: 100px 100px 100px; gap: 10px; }
@@ -72,6 +73,7 @@
     <div id="imageContainer">
         <div id="loading">Loading...</div>
         <img id="currentImage" src="" alt="Campus View" style="display: none;">
+        <div id="preloadContainer"></div>
         <div id="locationInfo">Location: <span id="locationId">-</span></div>
         <div id="controls">
             <div class="nav-grid">
@@ -148,11 +150,13 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script>
-let g={},loc="1",nCnt=1000;
-const el={img:document.getElementById('currentImage'),locId:document.getElementById('locationId'),load:document.getElementById('loading'),fwd:document.getElementById('forwardBtn'),bwd:document.getElementById('backwardBtn'),left:document.getElementById('leftBtn'),right:document.getElementById('rightBtn'),adminP:document.getElementById('adminPanel'),adminT:document.getElementById('adminToggle')};
+let g={},loc="1",nCnt=1000,preloadedImages={};
+const el={img:document.getElementById('currentImage'),locId:document.getElementById('locationId'),load:document.getElementById('loading'),fwd:document.getElementById('forwardBtn'),bwd:document.getElementById('backwardBtn'),left:document.getElementById('leftBtn'),right:document.getElementById('rightBtn'),adminP:document.getElementById('adminPanel'),adminT:document.getElementById('adminToggle'),preload:document.getElementById('preloadContainer')};
 for(let i=1;i<=10;i++)g[String(i)]={image:`images/${i}.jpeg`,forward:i<10?String(i+1):null,backward:i>1?String(i-1):null,left:null,right:null};
-function init(){localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();});localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});attachListeners();}
-function updateView(){const n=g[loc];if(!n)return;el.load.style.display='block';el.img.style.display='none';el.img.onload=()=>{el.load.style.display='none';el.img.style.display='block';};el.img.onerror=()=>el.load.textContent='Error';el.img.src=n.image;el.locId.textContent=loc;updateBtn(el.fwd,n.forward);updateBtn(el.bwd,n.backward);updateBtn(el.left,n.left);updateBtn(el.right,n.right);updateAdminPanel();}
+function preloadImage(src){if(!src||preloadedImages[src])return;const img=new Image();img.src=src;preloadedImages[src]=img;el.preload.appendChild(img);}
+function preloadAdjacentImages(){const n=g[loc];if(!n)return;if(n.forward&&g[n.forward])preloadImage(g[n.forward].image);if(n.backward&&g[n.backward])preloadImage(g[n.backward].image);if(n.left&&g[n.left])preloadImage(g[n.left].image);if(n.right&&g[n.right])preloadImage(g[n.right].image);}
+function init(){localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();preloadAdjacentImages();});localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});attachListeners();}
+function updateView(){const n=g[loc];if(!n)return;if(preloadedImages[n.image]){el.img.src=n.image;el.load.style.display='none';el.img.style.display='block';}else{el.load.style.display='block';el.img.style.display='none';el.img.onload=()=>{el.load.style.display='none';el.img.style.display='block';preloadedImages[n.image]=el.img;};el.img.onerror=()=>el.load.textContent='Error';el.img.src=n.image;}el.locId.textContent=loc;updateBtn(el.fwd,n.forward);updateBtn(el.bwd,n.backward);updateBtn(el.left,n.left);updateBtn(el.right,n.right);updateAdminPanel();preloadAdjacentImages();}
 function updateBtn(b,h){b.disabled=!h;}
 function nav(d){const n=g[loc][d];if(n&&g[n]){loc=n;updateView();}}
 function attachListeners(){el.fwd.onclick=()=>nav('forward');el.bwd.onclick=()=>nav('backward');el.left.onclick=()=>nav('left');el.right.onclick=()=>nav('right');el.adminT.onclick=()=>openAdminPanel();document.onkeydown=e=>{if(e.key==='Escape'&&el.adminP.classList.contains('open')){el.adminP.classList.remove('open');return;}if(e.key==='Escape'&&document.getElementById('passwordModal').classList.contains('active')){closePasswordModal();return;}if(el.adminP.classList.contains('open')||document.getElementById('passwordModal').classList.contains('active'))return;if(['ArrowUp','w','W'].includes(e.key)&&!el.fwd.disabled)nav('forward');if(['ArrowDown','s','S'].includes(e.key)&&!el.bwd.disabled)nav('backward');if(['ArrowLeft','a','A'].includes(e.key)&&!el.left.disabled)nav('left');if(['ArrowRight','d','D'].includes(e.key)&&!el.right.disabled)nav('right');};}
@@ -170,7 +174,7 @@ function showStatus(m,t){const s=document.getElementById('statusMessage');s.text
 let uploadMode=null,uploadDir=null;
 function uploadForDirection(d){uploadMode='direction';uploadDir=d;document.getElementById('fileUpload').click();}
 function uploadForNewNode(){uploadMode='newNode';uploadDir=null;document.getElementById('fileUpload').click();}
-function handleFileUpload(e){const file=e.target.files[0];if(!file){return;}const reader=new FileReader();reader.onload=function(ev){const imgData=ev.target.result;const nid=`node_${nCnt++}`;localforage.setItem('nodeCounter',nCnt);if(uploadMode==='direction'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};g[loc][uploadDir]=nid;const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};g[nid][rev[uploadDir]]=loc;save();updateView();updateNodeList();showStatus(`${uploadDir} created: ${nid}`,'success');}else if(uploadMode==='newNode'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};document.getElementById('newNodeId').value=nid;document.getElementById('newNodeImage').value='Uploaded';save();updateNodeList();showStatus(`Created: ${nid}`,'success');}e.target.value='';};reader.readAsDataURL(file);}
+function handleFileUpload(e){const file=e.target.files[0];if(!file){return;}const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');let width=img.width;let height=img.height;const maxSize=1200;if(width>maxSize||height>maxSize){if(width>height){height=(height/width)*maxSize;width=maxSize;}else{width=(width/height)*maxSize;height=maxSize;}}canvas.width=width;canvas.height=height;ctx.drawImage(img,0,0,width,height);const imgData=canvas.toDataURL('image/jpeg',0.85);const nid=`node_${nCnt++}`;localforage.setItem('nodeCounter',nCnt);if(uploadMode==='direction'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};g[loc][uploadDir]=nid;const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};g[nid][rev[uploadDir]]=loc;save();updateView();updateNodeList();showStatus(`${uploadDir} created: ${nid}`,'success');}else if(uploadMode==='newNode'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};document.getElementById('newNodeId').value=nid;document.getElementById('newNodeImage').value='Uploaded';save();updateNodeList();showStatus(`Created: ${nid}`,'success');}e.target.value='';};img.src=ev.target.result;};reader.readAsDataURL(file);}
 window.onload=init;
     </script>
 </body>
