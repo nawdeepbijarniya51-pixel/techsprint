@@ -72,15 +72,23 @@
         #closeCameraBtn { background: rgba(220, 53, 69, 0.9); color: white; }
         .upload-camera-choice { display: flex; gap: 10px; margin-top: 10px; }
         .upload-camera-choice button { flex: 1; padding: 12px; font-size: 14px; }
-        #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 300; justify-content: center; align-items: center; }
-        #cameraModal.active { display: flex; }
-        .camera-container { background: rgba(20, 20, 20, 0.98); padding: 30px; border-radius: 15px; max-width: 90%; max-height: 90%; overflow: auto; }
-        .camera-container h3 { color: #4285f5; margin-bottom: 20px; text-align: center; }
-        #cameraVideo { width: 100%; max-width: 640px; border-radius: 10px; margin-bottom: 15px; display: block; }
-        #capturedCanvas { display: none; }
-        #capturedPreview { width: 100%; max-width: 640px; border-radius: 10px; margin-bottom: 15px; display: none; }
-        .camera-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        .camera-controls button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; }
+        #githubModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 350; justify-content: center; align-items: center; }
+        #githubModal.active { display: flex; }
+        .github-container { background: rgba(20, 20, 20, 0.98); padding: 40px; border-radius: 15px; width: 90%; max-width: 500px; }
+        .github-container h3 { color: #4285f5; margin-bottom: 20px; text-align: center; }
+        .github-info { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+        .github-info ol { margin-left: 20px; margin-bottom: 15px; }
+        .github-info li { margin-bottom: 8px; }
+        #githubConfigForm input { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 14px; margin-bottom: 15px; }
+        #githubConfigForm input:focus { outline: none; border-color: #4285f5; }
+        .github-buttons { display: flex; gap: 10px; justify-content: center; }
+        .github-buttons button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .github-buttons .save-btn { background: rgba(40, 167, 69, 0.9); color: white; }
+        .github-buttons .cancel-btn { background: rgba(108, 117, 125, 0.9); color: white; }
+        .github-buttons .test-btn { background: rgba(67, 133, 245, 0.9); color: white; }
+        .github-status { margin-top: 15px; padding: 10px; border-radius: 5px; font-size: 14px; display: none; }
+        .github-status.success { background: rgba(40, 167, 69, 0.2); color: #90ee90; display: block; }
+        .github-status.error { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; display: block; }
     </style>
 </head>
 <body>
@@ -178,8 +186,14 @@
             <input type="text" id="newNodeImage" placeholder="Auto-filled" readonly>
             <button class="admin-btn success" onclick="addNewNode()">Create</button>
         </div>
+        <div class="admin-section">
+            <h3>⚙️ GitHub Integration</h3>
+            <button class="admin-btn" onclick="openGitHubConfig()">🔧 Configure GitHub</button>
+            <button class="admin-btn" onclick="openGitHubConfig()">💾 Sync Images to GitHub</button>
+            <div id="githubStatus" style="margin-top: 15px; font-size: 12px; color: #ccc;"></div>
+        </div>
         <div class="admin-section"><h3>📋 All Nodes</h3><div class="node-list" id="nodeList"></div></div>
-        <div id="statusMessage" class="status-message">        </div>
+        <div id="statusMessage" class="status-message"></div>
     </div>
     <div id="cameraModal">
         <div class="camera-container">
@@ -207,25 +221,105 @@
             </div>
         </div>
     </div>
+    <div id="githubModal">
+        <div class="github-container">
+            <h3>🔧 GitHub Integration</h3>
+            <div class="github-info">
+                <p>To store images in your GitHub repository:</p>
+                <ol>
+                    <li>Create a GitHub Personal Access Token with <code>repo</code> permissions</li>
+                    <li>Create a repository (or use existing)</li>
+                    <li>Enter details below</li>
+                </ol>
+                <p><strong>Format:</strong> <code>https://github.com/username/repo/images/filename.jpg</code></p>
+            </div>
+            <form id="githubConfigForm" onsubmit="saveGitHubConfig(); return false;">
+                <input type="text" id="githubRepo" placeholder="username/repository" required>
+                <input type="text" id="githubBranch" placeholder="Branch (default: main)" value="main">
+                <input type="password" id="githubToken" placeholder="GitHub Personal Access Token" required>
+                <div class="github-buttons">
+                    <button type="submit" class="save-btn">💾 Save Configuration</button>
+                    <button type="button" class="test-btn" onclick="testGitHubConnection()">🔗 Test Connection</button>
+                    <button type="button" class="cancel-btn" onclick="closeGitHubModal()">❌ Cancel</button>
+                </div>
+            </form>
+            <div id="githubTestStatus" class="github-status"></div>
+        </div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script>
 let g={},loc="1",nCnt=1000,preloadedImages={},cam=null,capData=null,capMode=null,capDir=null;
+let uploadMode=null,uploadDir=null;
+let githubConfig={repo:'',token:'',branch:'main'};
 const el={img:document.getElementById('currentImage'),locId:document.getElementById('locationId'),load:document.getElementById('loading'),fwd:document.getElementById('forwardBtn'),bwd:document.getElementById('backwardBtn'),left:document.getElementById('leftBtn'),right:document.getElementById('rightBtn'),adminP:document.getElementById('adminPanel'),adminT:document.getElementById('adminToggle'),preload:document.getElementById('preloadContainer'),camM:document.getElementById('cameraModal'),camV:document.getElementById('cameraVideo'),capC:document.getElementById('capturedCanvas'),capP:document.getElementById('capturedPreview')};
+
+// Initial graph data
 for(let i=1;i<=10;i++)g[String(i)]={image:`images/${i}.jpeg`,forward:i<10?String(i+1):null,backward:i>1?String(i-1):null,left:null,right:null};
+
 function preloadImage(src){if(!src||preloadedImages[src])return;const img=new Image();img.src=src;preloadedImages[src]=img;el.preload.appendChild(img);}
 function preloadAdjacentImages(){const n=g[loc];if(!n)return;if(n.forward&&g[n.forward])preloadImage(g[n.forward].image);if(n.backward&&g[n.backward])preloadImage(g[n.backward].image);if(n.left&&g[n.left])preloadImage(g[n.left].image);if(n.right&&g[n.right])preloadImage(g[n.right].image);}
-function init(){localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();preloadAdjacentImages();});localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});attachListeners();}
+async function init(){
+    localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();preloadAdjacentImages();});
+    localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});
+    localforage.getItem('githubConfig').then(cfg=>{
+        if(cfg){githubConfig=cfg;updateGitHubStatus();}
+    });
+    attachListeners();
+}
 function updateView(){const n=g[loc];if(!n)return;if(preloadedImages[n.image]){el.img.src=n.image;el.load.style.display='none';el.img.style.display='block';}else{el.load.style.display='block';el.img.style.display='none';el.img.onload=()=>{el.load.style.display='none';el.img.style.display='block';preloadedImages[n.image]=el.img;};el.img.onerror=()=>el.load.textContent='Error';el.img.src=n.image;}el.locId.textContent=loc;updateBtn(el.fwd,n.forward);updateBtn(el.bwd,n.backward);updateBtn(el.left,n.left);updateBtn(el.right,n.right);updateAdminPanel();preloadAdjacentImages();}
 function updateBtn(b,h){b.disabled=!h;}
 function nav(d){const n=g[loc][d];if(n&&g[n]){loc=n;updateView();}}
 function attachListeners(){el.fwd.onclick=()=>nav('forward');el.bwd.onclick=()=>nav('backward');el.left.onclick=()=>nav('left');el.right.onclick=()=>nav('right');el.adminT.onclick=()=>openAdminPanel();document.onkeydown=e=>{if(e.key==='Escape'&&el.adminP.classList.contains('open')){el.adminP.classList.remove('open');return;}if(e.key==='Escape'&&document.getElementById('passwordModal').classList.contains('active')){closePasswordModal();return;}if(e.key==='Escape'&&el.camM.classList.contains('active')){closeCamera();return;}if(el.adminP.classList.contains('open')||document.getElementById('passwordModal').classList.contains('active')||el.camM.classList.contains('active'))return;if(['ArrowUp','w','W'].includes(e.key)&&!el.fwd.disabled)nav('forward');if(['ArrowDown','s','S'].includes(e.key)&&!el.bwd.disabled)nav('backward');if(['ArrowLeft','a','A'].includes(e.key)&&!el.left.disabled)nav('left');if(['ArrowRight','d','D'].includes(e.key)&&!el.right.disabled)nav('right');};}
+
+// Camera functions
 async function openCameraForDirection(d){capMode='direction';capDir=d;document.getElementById('cameraTitle').textContent=`📷 Capture ${d.toUpperCase()}`;await openCamera();}
 async function openCameraForNewNode(){capMode='newNode';capDir=null;document.getElementById('cameraTitle').textContent='📷 Capture New Node';await openCamera();}
 async function openCamera(){try{cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:1920,height:1080}});el.camV.srcObject=cam;el.camM.classList.add('active');el.capP.style.display='none';el.camV.style.display='block';document.getElementById('captureBtn').style.display='inline-block';document.getElementById('retakeBtn').style.display='none';document.getElementById('useCaptureBtn').style.display='none';capData=null;}catch(e){showStatus('Camera error - use upload instead','error');console.error(e);}}
 function captureImage(){el.capC.width=el.camV.videoWidth;el.capC.height=el.camV.videoHeight;const ctx=el.capC.getContext('2d');ctx.drawImage(el.camV,0,0);const maxSize=1200;let width=el.capC.width;let height=el.capC.height;if(width>maxSize||height>maxSize){const canvas2=document.createElement('canvas');if(width>height){canvas2.height=(height/width)*maxSize;canvas2.width=maxSize;}else{canvas2.width=(width/height)*maxSize;canvas2.height=maxSize;}canvas2.getContext('2d').drawImage(el.capC,0,0,canvas2.width,canvas2.height);capData=canvas2.toDataURL('image/jpeg',0.85);}else{capData=el.capC.toDataURL('image/jpeg',0.85);}el.capP.src=capData;el.camV.style.display='none';el.capP.style.display='block';document.getElementById('captureBtn').style.display='none';document.getElementById('retakeBtn').style.display='inline-block';document.getElementById('useCaptureBtn').style.display='inline-block';}
 function retakeImage(){el.capP.style.display='none';el.camV.style.display='block';document.getElementById('captureBtn').style.display='inline-block';document.getElementById('retakeBtn').style.display='none';document.getElementById('useCaptureBtn').style.display='none';capData=null;}
-function useCapturedImage(){if(!capData){showStatus('No image captured','error');return;}const nid=`node_${nCnt++}`;localforage.setItem('nodeCounter',nCnt);if(capMode==='direction'){g[nid]={image:capData,forward:null,backward:null,left:null,right:null};g[loc][capDir]=nid;const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};g[nid][rev[capDir]]=loc;save();updateView();updateNodeList();showStatus(`${capDir} created: ${nid}`,'success');}else if(capMode==='newNode'){g[nid]={image:capData,forward:null,backward:null,left:null,right:null};document.getElementById('newNodeId').value=nid;document.getElementById('newNodeImage').value='Captured';save();updateNodeList();showStatus(`Created: ${nid}`,'success');}closeCamera();}
+
+async function useCapturedImage(){
+    if(!capData){showStatus('No image captured','error');return;}
+    const nid=`node_${nCnt++}`;
+    localforage.setItem('nodeCounter',nCnt);
+    
+    // Upload to GitHub if configured
+    let githubUrl = capData; // fallback to data URL
+    if(githubConfig.token && githubConfig.repo){
+        try{
+            const timestamp = Date.now();
+            const filename = `${nid}_${timestamp}.jpg`;
+            githubUrl = await uploadToGitHub(capData, filename);
+            showStatus(`Image uploaded to GitHub: ${filename}`,'success');
+        }catch(err){
+            console.error('GitHub upload failed:',err);
+            showStatus('GitHub upload failed, using local storage','error');
+        }
+    }
+    
+    if(capMode==='direction'){
+        g[nid]={image:githubUrl,forward:null,backward:null,left:null,right:null};
+        g[loc][capDir]=nid;
+        const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};
+        g[nid][rev[capDir]]=loc;
+        save();
+        updateView();
+        updateNodeList();
+        showStatus(`${capDir} created: ${nid}`,'success');
+    }else if(capMode==='newNode'){
+        g[nid]={image:githubUrl,forward:null,backward:null,left:null,right:null};
+        document.getElementById('newNodeId').value=nid;
+        document.getElementById('newNodeImage').value='Captured';
+        save();
+        updateNodeList();
+        showStatus(`Created: ${nid}`,'success');
+    }
+    closeCamera();
+}
+
 function closeCamera(){if(cam){cam.getTracks().forEach(t=>t.stop());cam=null;}el.camM.classList.remove('active');capData=null;}
+
+// Admin functions
 function openAdminPanel(){document.getElementById('passwordModal').classList.add('active');document.getElementById('passwordInput').value='';document.getElementById('passwordError').style.display='none';document.getElementById('passwordInput').focus();}
 function closePasswordModal(){document.getElementById('passwordModal').classList.remove('active');}
 function checkPassword(){const pwd=document.getElementById('passwordInput').value;if(pwd==='Nawd@9950'){document.getElementById('passwordModal').classList.remove('active');el.adminP.classList.add('open');document.getElementById('passwordInput').value='';}else{document.getElementById('passwordError').style.display='block';document.getElementById('passwordInput').value='';document.getElementById('passwordInput').focus();}}
@@ -233,17 +327,210 @@ function updateAdminPanel(){document.getElementById('adminCurrentLocation').text
 function updateDirStatus(d,l){const s=document.getElementById(`${d}Status`);s.innerHTML=l?`<div class="current-link">✅ ${l}</div>`:`<div class="no-link-indicator">❌ No link</div>`;}
 function setDirection(d){const t=document.getElementById(`${d}Input`).value.trim();if(!t){showStatus('Enter ID','error');return;}if(!g[t]){showStatus('Node not found','error');return;}g[loc][d]=t;save();updateView();showStatus(`${d} set to ${t}`,'success');}
 function removeDirection(d){g[loc][d]=null;save();updateView();showStatus(`${d} removed`,'success');}
-function addNewNode(){const id=document.getElementById('newNodeId').value.trim();const img=document.getElementById('newNodeImage').value.trim();if(!id){showStatus('Enter ID','error');return;}if(g[id]){showStatus('Exists','error');return;}if(!img){showStatus('Upload image','error');return;}g[id]={image:img,forward:null,backward:null,left:null,right:null};save();updateNodeList();document.getElementById('newNodeId').value='';document.getElementById('newNodeImage').value='';showStatus(`Created ${id}`,'success');}
+
+async function addNewNode(){
+    const id=document.getElementById('newNodeId').value.trim();
+    const img=document.getElementById('newNodeImage').value.trim();
+    if(!id){showStatus('Enter ID','error');return;}
+    if(g[id]){showStatus('Exists','error');return;}
+    if(!img){showStatus('Upload image','error');return;}
+    
+    g[id]={image:img,forward:null,backward:null,left:null,right:null};
+    save();
+    updateNodeList();
+    document.getElementById('newNodeId').value='';
+    document.getElementById('newNodeImage').value='';
+    showStatus(`Created ${id}`,'success');
+}
+
 function updateNodeList(){const nl=document.getElementById('nodeList');nl.innerHTML='';Object.keys(g).sort().forEach(id=>{const d=document.createElement('div');d.className='node-item';d.textContent=`Node ${id}`;d.onclick=()=>{loc=id;updateView();showStatus(`→ ${id}`,'success');};nl.appendChild(d);});}
 function save(){localforage.setItem('campusNav',g);}
 function showStatus(m,t){const s=document.getElementById('statusMessage');s.textContent=m;s.className=`status-message ${t}`;s.style.display='block';setTimeout(()=>s.style.display='none',4000);}
-let uploadMode=null,uploadDir=null;
+
+// File upload functions
 function uploadForDirection(d){uploadMode='direction';uploadDir=d;document.getElementById('fileUpload').click();}
 function uploadForNewNode(){uploadMode='newNode';uploadDir=null;document.getElementById('fileUpload').click();}
-function handleFileUpload(e){const file=e.target.files[0];if(!file){return;}const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');let width=img.width;let height=img.height;const maxSize=1200;if(width>maxSize||height>maxSize){if(width>height){height=(height/width)*maxSize;width=maxSize;}else{width=(width/height)*maxSize;height=maxSize;}}canvas.width=width;canvas.height=height;ctx.drawImage(img,0,0,width,height);const imgData=canvas.toDataURL('image/jpeg',0.85);const nid=`node_${nCnt++}`;localforage.setItem('nodeCounter',nCnt);if(uploadMode==='direction'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};g[loc][uploadDir]=nid;const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};g[nid][rev[uploadDir]]=loc;save();updateView();updateNodeList();showStatus(`${uploadDir} created: ${nid}`,'success');}else if(uploadMode==='newNode'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};document.getElementById('newNodeId').value=nid;document.getElementById('newNodeImage').value='Uploaded';save();updateNodeList();showStatus(`Created: ${nid}`,'success');}e.target.value='';};img.src=ev.target.result;};reader.readAsDataURL(file);}
+
+async function handleFileUpload(e){
+    const file=e.target.files[0];
+    if(!file){return;}
+    const reader=new FileReader();
+    reader.onload=async function(ev){
+        const img=new Image();
+        img.onload=async function(){
+            const canvas=document.createElement('canvas');
+            const ctx=canvas.getContext('2d');
+            let width=img.width;
+            let height=img.height;
+            const maxSize=1200;
+            if(width>maxSize||height>maxSize){
+                if(width>height){
+                    height=(height/width)*maxSize;
+                    width=maxSize;
+                }else{
+                    width=(width/height)*maxSize;
+                    height=maxSize;
+                }
+            }
+            canvas.width=width;
+            canvas.height=height;
+            ctx.drawImage(img,0,0,width,height);
+            const imgData=canvas.toDataURL('image/jpeg',0.85);
+            
+            const nid=`node_${nCnt++}`;
+            localforage.setItem('nodeCounter',nCnt);
+            
+            // Upload to GitHub if configured
+            let finalImgUrl = imgData;
+            if(githubConfig.token && githubConfig.repo){
+                try{
+                    const timestamp = Date.now();
+                    const filename = `${nid}_${timestamp}.jpg`;
+                    finalImgUrl = await uploadToGitHub(imgData, filename);
+                    showStatus(`Image uploaded to GitHub: ${filename}`,'success');
+                }catch(err){
+                    console.error('GitHub upload failed:',err);
+                    showStatus('GitHub upload failed, using local storage','error');
+                }
+            }
+            
+            if(uploadMode==='direction'){
+                g[nid]={image:finalImgUrl,forward:null,backward:null,left:null,right:null};
+                g[loc][uploadDir]=nid;
+                const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};
+                g[nid][rev[uploadDir]]=loc;
+                save();
+                updateView();
+                updateNodeList();
+                showStatus(`${uploadDir} created: ${nid}`,'success');
+            }else if(uploadMode==='newNode'){
+                g[nid]={image:finalImgUrl,forward:null,backward:null,left:null,right:null};
+                document.getElementById('newNodeId').value=nid;
+                document.getElementById('newNodeImage').value='Uploaded';
+                save();
+                updateNodeList();
+                showStatus(`Created: ${nid}`,'success');
+            }
+            e.target.value='';
+        };
+        img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// GitHub Integration Functions
+function openGitHubConfig(){
+    document.getElementById('githubModal').classList.add('active');
+    document.getElementById('githubRepo').value = githubConfig.repo;
+    document.getElementById('githubBranch').value = githubConfig.branch;
+    document.getElementById('githubToken').value = githubConfig.token || '';
+}
+
+function closeGitHubModal(){
+    document.getElementById('githubModal').classList.remove('active');
+}
+
+async function saveGitHubConfig(){
+    const repo = document.getElementById('githubRepo').value.trim();
+    const branch = document.getElementById('githubBranch').value.trim() || 'main';
+    const token = document.getElementById('githubToken').value.trim();
+    
+    if(!repo || !token){
+        showGitHubStatus('Please fill all fields', 'error');
+        return;
+    }
+    
+    githubConfig = {repo, branch, token};
+    await localforage.setItem('githubConfig', githubConfig);
+    updateGitHubStatus();
+    showGitHubStatus('Configuration saved successfully!', 'success');
+}
+
+function updateGitHubStatus(){
+    const statusEl = document.getElementById('githubStatus');
+    if(githubConfig.repo && githubConfig.token){
+        statusEl.innerHTML = `✅ GitHub: ${githubConfig.repo} (${githubConfig.branch})`;
+    }else{
+        statusEl.innerHTML = `❌ GitHub not configured`;
+    }
+}
+
+async function testGitHubConnection(){
+    if(!githubConfig.repo || !githubConfig.token){
+        showGitHubStatus('Please configure GitHub first', 'error');
+        return;
+    }
+    
+    try{
+        showGitHubStatus('Testing connection...', '');
+        const testContent = btoa('Test connection from Campus Navigation System');
+        const response = await fetch(`https://api.github.com/repos/${githubConfig.repo}/contents/test.txt`,{
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${githubConfig.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: 'Test connection',
+                content: testContent,
+                branch: githubConfig.branch
+            })
+        });
+        
+        if(response.ok){
+            showGitHubStatus('✅ Connection successful!', 'success');
+        }else{
+            const error = await response.json();
+            showGitHubStatus(`❌ Connection failed: ${error.message || response.status}`, 'error');
+        }
+    }catch(err){
+        showGitHubStatus(`❌ Error: ${err.message}`, 'error');
+    }
+}
+
+async function uploadToGitHub(dataUrl, filename){
+    if(!githubConfig.repo || !githubConfig.token){
+        throw new Error('GitHub not configured');
+    }
+    
+    // Convert data URL to base64
+    const base64Data = dataUrl.split(',')[1];
+    const path = `images/${filename}`;
+    
+    const response = await fetch(`https://api.github.com/repos/${githubConfig.repo}/contents/${path}`,{
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${githubConfig.token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: `Add image: ${filename}`,
+            content: base64Data,
+            branch: githubConfig.branch
+        })
+    });
+    
+    if(!response.ok){
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+    }
+    
+    const result = await response.json();
+    
+    // Construct raw GitHub URL
+    return `https://raw.githubusercontent.com/${githubConfig.repo}/${githubConfig.branch}/images/${filename}`;
+}
+
+function showGitHubStatus(message, type){
+    const statusEl = document.getElementById('githubTestStatus');
+    statusEl.textContent = message;
+    statusEl.className = `github-status ${type}`;
+}
+
 window.onload=init;
     </script>
 </body>
 </html>
+
 
 
