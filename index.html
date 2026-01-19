@@ -3,221 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Street View Navigation</title>
+    <title>Campus Navigation System</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-        }
-        img {
-            width: 500px;
-            height: 500px;
-            object-fit: cover;
-        }
-        .container {
-            background-color: lightgray;
-            width: 700px;
-            height: 500px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-        button {
-            position: absolute;
-            border-radius: 50%;
-            padding: 10px 20px;
-            font-size: 20px;
-            background-color: white;
-            border: 2px solid #333;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        button:hover {
-            background-color: #333;
-            color: white;
-        }
-        button:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .forward {
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .back {
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .left {
-            top: 50%;
-            left: 50px;
-            transform: translateY(-50%);
-        }
-        .right {
-            top: 50%;
-            right: 50px;
-            transform: translateY(-50%);
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background: #000; }
+        #imageContainer { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #1a1a1a; }
+        #currentImage { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #locationInfo { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.8); color: white; padding: 15px 25px; border-radius: 10px; font-size: 18px; font-weight: bold; z-index: 100; backdrop-filter: blur(10px); }
+        #controls { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        .nav-grid { display: grid; grid-template-columns: 100px 100px 100px; grid-template-rows: 100px 100px 100px; gap: 10px; }
+        .nav-btn { background: rgba(67, 133, 245, 0.9); border: 3px solid white; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:hover:not(:disabled) { background: rgba(67, 133, 245, 1); transform: scale(1.05); box-shadow: 0 0 20px rgba(67, 133, 245, 0.6); }
+        .nav-btn:disabled { background: rgba(100, 100, 100, 0.5); border-color: rgba(150, 150, 150, 0.5); cursor: not-allowed; opacity: 0.3; }
+        #forwardBtn { grid-column: 2; grid-row: 1; }
+        #leftBtn { grid-column: 1; grid-row: 2; }
+        #backwardBtn { grid-column: 2; grid-row: 3; }
+        #rightBtn { grid-column: 3; grid-row: 2; }
+        .arrow { font-size: 28px; }
+        #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; z-index: 50; }
+        #adminToggle { position: absolute; top: 20px; right: 20px; background: rgba(67, 133, 245, 0.9); border: none; color: white; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; z-index: 150; transition: all 0.3s ease; }
+        #adminPanel { position: fixed; top: 0; right: -500px; width: 500px; height: 100vh; background: rgba(20, 20, 20, 0.98); color: white; padding: 25px; z-index: 200; backdrop-filter: blur(20px); transition: right 0.4s ease; overflow-y: auto; border-left: 2px solid rgba(67, 133, 245, 0.5); }
+        #adminPanel.open { right: 0; }
+        #adminPanel h2 { margin-bottom: 20px; font-size: 24px; color: #4285f5; }
+        #adminPanel h3 { margin-top: 25px; margin-bottom: 15px; font-size: 18px; color: #66a3ff; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 8px; }
+        .admin-section { margin-bottom: 25px; }
+        .admin-section label { display: block; margin-bottom: 8px; font-size: 14px; color: #ccc; }
+        .admin-section input { width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; color: white; font-size: 14px; margin-bottom: 10px; }
+        .admin-btn { background: rgba(67, 133, 245, 0.9); border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin: 5px 0; transition: all 0.3s ease; }
+        .admin-btn:hover { background: rgba(67, 133, 245, 1); }
+        .admin-btn.danger { background: rgba(220, 53, 69, 0.9); }
+        .admin-btn.success { background: rgba(40, 167, 69, 0.9); }
+        .direction-config { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .direction-config h4 { margin-bottom: 10px; color: #4285f5; font-size: 16px; }
+        .current-link { background: rgba(40, 167, 69, 0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 13px; }
+        .no-link-indicator { background: rgba(220, 53, 69, 0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 13px; color: #ff6b6b; }
+        .status-message { padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; display: none; }
+        .status-message.success { background: rgba(40, 167, 69, 0.3); color: #90ee90; }
+        .status-message.error { background: rgba(220, 53, 69, 0.3); color: #ff6b6b; }
+        #graphData { width: 100%; height: 200px; margin-top: 10px; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; color: white; font-family: monospace; font-size: 11px; }
+        .node-list { max-height: 150px; overflow-y: auto; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .node-item { padding: 8px; margin: 5px 0; background: rgba(67, 133, 245, 0.2); border-radius: 4px; cursor: pointer; transition: all 0.2s ease; }
+        .node-item:hover { background: rgba(67, 133, 245, 0.4); transform: translateX(5px); }
+        #passwordModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 250; justify-content: center; align-items: center; }
+        #passwordModal.active { display: flex; }
+        .password-container { background: rgba(20, 20, 20, 0.98); padding: 40px; border-radius: 15px; text-align: center; border: 2px solid rgba(67, 133, 245, 0.5); }
+        .password-container h3 { color: #4285f5; margin-bottom: 20px; font-size: 24px; }
+        .password-container input { width: 300px; padding: 15px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 16px; margin-bottom: 20px; text-align: center; }
+        .password-container input:focus { outline: none; border-color: #4285f5; }
+        .password-container button { padding: 12px 30px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 0 10px; }
+        .password-container .submit-btn { background: rgba(67, 133, 245, 0.9); color: white; }
+        .password-container .submit-btn:hover { background: rgba(67, 133, 245, 1); }
+        .password-container .cancel-btn { background: rgba(220, 53, 69, 0.9); color: white; }
+        .password-container .cancel-btn:hover { background: rgba(220, 53, 69, 1); }
+        .password-error { color: #ff6b6b; margin-top: 10px; font-size: 14px; display: none; }
+        #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 300; justify-content: center; align-items: center; }
+        #cameraModal.active { display: flex; }
+        .camera-container { background: rgba(20, 20, 20, 0.98); padding: 30px; border-radius: 15px; max-width: 90%; max-height: 90%; overflow: auto; }
+        .camera-container h3 { color: #4285f5; margin-bottom: 20px; text-align: center; }
+        #cameraVideo { width: 100%; max-width: 640px; border-radius: 10px; margin-bottom: 15px; display: block; }
+        #capturedCanvas { display: none; }
+        #capturedPreview { width: 100%; max-width: 640px; border-radius: 10px; margin-bottom: 15px; display: none; }
+        .camera-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .camera-controls button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <button class="forward">↑</button>
-        <button class="back">↓</button>
-        <button class="left" style="display: none;">←</button>
-        <button class="right" style="display: none;">→</button>
-        <img alt="Street View">
+    <button id="adminToggle">⚙️ Admin Panel</button>
+    <div id="imageContainer">
+        <div id="loading">Loading...</div>
+        <img id="currentImage" src="" alt="Campus View" style="display: none;">
+        <div id="locationInfo">Location: <span id="locationId">-</span></div>
+        <div id="controls">
+            <div class="nav-grid">
+                <button id="forwardBtn" class="nav-btn"><span class="arrow">↑</span></button>
+                <button id="leftBtn" class="nav-btn"><span class="arrow">←</span></button>
+                <button id="backwardBtn" class="nav-btn"><span class="arrow">↓</span></button>
+                <button id="rightBtn" class="nav-btn"><span class="arrow">→</span></button>
+            </div>
+        </div>
     </div>
+    <div id="adminPanel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">🛠️ Admin Panel</h2>
+            <button onclick="document.getElementById('adminPanel').classList.remove('open')" style="background: rgba(220, 53, 69, 0.9); border: none; color: white; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">✕ Close</button>
+        </div>
+        <div class="admin-section"><h3>Current: <span id="adminCurrentLocation">-</span></h3></div>
+        <div class="admin-section">
+            <h3>📁 Upload Images</h3>
+            <p style="font-size: 13px; color: #ccc; margin-bottom: 15px;">Upload images from your device</p>
+            <input type="file" id="fileUpload" accept="image/*" style="display:none;" onchange="handleFileUpload(event)">
+            <button class="admin-btn" onclick="uploadForDirection('forward')">📁 Upload Forward</button>
+            <button class="admin-btn" onclick="uploadForDirection('backward')">📁 Upload Backward</button>
+            <button class="admin-btn" onclick="uploadForDirection('left')">📁 Upload Left</button>
+            <button class="admin-btn" onclick="uploadForDirection('right')">📁 Upload Right</button>
+            <button class="admin-btn" onclick="uploadForNewNode()">📁 Upload New Node</button>
+        </div>
+        <div class="admin-section">
+            <h3>📍 Links</h3>
+            <div class="direction-config">
+                <h4>⬆️ Forward</h4><div id="forwardStatus"></div>
+                <input type="text" id="forwardInput" placeholder="Node ID">
+                <button class="admin-btn" onclick="setDirection('forward')">Set</button>
+                <button class="admin-btn danger" onclick="removeDirection('forward')">Remove</button>
+            </div>
+            <div class="direction-config">
+                <h4>⬇️ Backward</h4><div id="backwardStatus"></div>
+                <input type="text" id="backwardInput" placeholder="Node ID">
+                <button class="admin-btn" onclick="setDirection('backward')">Set</button>
+                <button class="admin-btn danger" onclick="removeDirection('backward')">Remove</button>
+            </div>
+            <div class="direction-config">
+                <h4>⬅️ Left</h4><div id="leftStatus"></div>
+                <input type="text" id="leftInput" placeholder="Node ID">
+                <button class="admin-btn" onclick="setDirection('left')">Set</button>
+                <button class="admin-btn danger" onclick="removeDirection('left')">Remove</button>
+            </div>
+            <div class="direction-config">
+                <h4>➡️ Right</h4><div id="rightStatus"></div>
+                <input type="text" id="rightInput" placeholder="Node ID">
+                <button class="admin-btn" onclick="setDirection('right')">Set</button>
+                <button class="admin-btn danger" onclick="removeDirection('right')">Remove</button>
+            </div>
+        </div>
+        <div class="admin-section">
+            <h3>➕ Add Node</h3>
+            <input type="text" id="newNodeId" placeholder="Node ID">
+            <input type="text" id="newNodeImage" placeholder="Auto-filled" readonly>
+            <button class="admin-btn success" onclick="addNewNode()">Create</button>
+        </div>
+        <div class="admin-section"><h3>📋 All Nodes</h3><div class="node-list" id="nodeList"></div></div>
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+    <div id="passwordModal">
+        <div class="password-container">
+            <h3>🔒 Admin Access</h3>
+            <p style="color: #ccc; margin-bottom: 20px;">Enter password to access admin panel</p>
+            <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="if(event.key==='Enter')checkPassword()">
+            <div class="password-error" id="passwordError">❌ Incorrect password</div>
+            <div style="margin-top: 20px;">
+                <button class="submit-btn" onclick="checkPassword()">🔓 Unlock</button>
+                <button class="cancel-btn" onclick="closePasswordModal()">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script>
+let g={},loc="1",nCnt=1000;
+const el={img:document.getElementById('currentImage'),locId:document.getElementById('locationId'),load:document.getElementById('loading'),fwd:document.getElementById('forwardBtn'),bwd:document.getElementById('backwardBtn'),left:document.getElementById('leftBtn'),right:document.getElementById('rightBtn'),adminP:document.getElementById('adminPanel'),adminT:document.getElementById('adminToggle')};
+for(let i=1;i<=10;i++)g[String(i)]={image:`images/${i}.jpeg`,forward:i<10?String(i+1):null,backward:i>1?String(i-1):null,left:null,right:null};
+function init(){localforage.getItem('campusNav').then(d=>{if(d){g=d;console.log('Loaded');}updateView();updateAdminPanel();updateNodeList();});localforage.getItem('nodeCounter').then(c=>{if(c)nCnt=c;});attachListeners();}
+function updateView(){const n=g[loc];if(!n)return;el.load.style.display='block';el.img.style.display='none';el.img.onload=()=>{el.load.style.display='none';el.img.style.display='block';};el.img.onerror=()=>el.load.textContent='Error';el.img.src=n.image;el.locId.textContent=loc;updateBtn(el.fwd,n.forward);updateBtn(el.bwd,n.backward);updateBtn(el.left,n.left);updateBtn(el.right,n.right);updateAdminPanel();}
+function updateBtn(b,h){b.disabled=!h;}
+function nav(d){const n=g[loc][d];if(n&&g[n]){loc=n;updateView();}}
+function attachListeners(){el.fwd.onclick=()=>nav('forward');el.bwd.onclick=()=>nav('backward');el.left.onclick=()=>nav('left');el.right.onclick=()=>nav('right');el.adminT.onclick=()=>openAdminPanel();document.onkeydown=e=>{if(e.key==='Escape'&&el.adminP.classList.contains('open')){el.adminP.classList.remove('open');return;}if(e.key==='Escape'&&document.getElementById('passwordModal').classList.contains('active')){closePasswordModal();return;}if(el.adminP.classList.contains('open')||document.getElementById('passwordModal').classList.contains('active'))return;if(['ArrowUp','w','W'].includes(e.key)&&!el.fwd.disabled)nav('forward');if(['ArrowDown','s','S'].includes(e.key)&&!el.bwd.disabled)nav('backward');if(['ArrowLeft','a','A'].includes(e.key)&&!el.left.disabled)nav('left');if(['ArrowRight','d','D'].includes(e.key)&&!el.right.disabled)nav('right');};}
+function openAdminPanel(){document.getElementById('passwordModal').classList.add('active');document.getElementById('passwordInput').value='';document.getElementById('passwordError').style.display='none';document.getElementById('passwordInput').focus();}
+function closePasswordModal(){document.getElementById('passwordModal').classList.remove('active');}
+function checkPassword(){const pwd=document.getElementById('passwordInput').value;if(pwd==='Nawd@9950'){document.getElementById('passwordModal').classList.remove('active');el.adminP.classList.add('open');document.getElementById('passwordInput').value='';}else{document.getElementById('passwordError').style.display='block';document.getElementById('passwordInput').value='';document.getElementById('passwordInput').focus();}}
+function updateAdminPanel(){document.getElementById('adminCurrentLocation').textContent=loc;const n=g[loc];updateDirStatus('forward',n.forward);updateDirStatus('backward',n.backward);updateDirStatus('left',n.left);updateDirStatus('right',n.right);document.getElementById('forwardInput').value=n.forward||'';document.getElementById('backwardInput').value=n.backward||'';document.getElementById('leftInput').value=n.left||'';document.getElementById('rightInput').value=n.right||'';}
+function updateDirStatus(d,l){const s=document.getElementById(`${d}Status`);s.innerHTML=l?`<div class="current-link">✅ ${l}</div>`:`<div class="no-link-indicator">❌ No link</div>`;}
+function setDirection(d){const t=document.getElementById(`${d}Input`).value.trim();if(!t){showStatus('Enter ID','error');return;}if(!g[t]){showStatus('Node not found','error');return;}g[loc][d]=t;save();updateView();showStatus(`${d} set to ${t}`,'success');}
+function removeDirection(d){g[loc][d]=null;save();updateView();showStatus(`${d} removed`,'success');}
+function addNewNode(){const id=document.getElementById('newNodeId').value.trim();const img=document.getElementById('newNodeImage').value.trim();if(!id){showStatus('Enter ID','error');return;}if(g[id]){showStatus('Exists','error');return;}if(!img){showStatus('Upload image','error');return;}g[id]={image:img,forward:null,backward:null,left:null,right:null};save();updateNodeList();document.getElementById('newNodeId').value='';document.getElementById('newNodeImage').value='';showStatus(`Created ${id}`,'success');}
+function updateNodeList(){const nl=document.getElementById('nodeList');nl.innerHTML='';Object.keys(g).sort().forEach(id=>{const d=document.createElement('div');d.className='node-item';d.textContent=`Node ${id}`;d.onclick=()=>{loc=id;updateView();showStatus(`→ ${id}`,'success');};nl.appendChild(d);});}
+function save(){localforage.setItem('campusNav',g);}
+function showStatus(m,t){const s=document.getElementById('statusMessage');s.textContent=m;s.className=`status-message ${t}`;s.style.display='block';setTimeout(()=>s.style.display='none',4000);}
+let uploadMode=null,uploadDir=null;
+function uploadForDirection(d){uploadMode='direction';uploadDir=d;document.getElementById('fileUpload').click();}
+function uploadForNewNode(){uploadMode='newNode';uploadDir=null;document.getElementById('fileUpload').click();}
+function handleFileUpload(e){const file=e.target.files[0];if(!file){return;}const reader=new FileReader();reader.onload=function(ev){const imgData=ev.target.result;const nid=`node_${nCnt++}`;localforage.setItem('nodeCounter',nCnt);if(uploadMode==='direction'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};g[loc][uploadDir]=nid;const rev={'forward':'backward','backward':'forward','left':'right','right':'left'};g[nid][rev[uploadDir]]=loc;save();updateView();updateNodeList();showStatus(`${uploadDir} created: ${nid}`,'success');}else if(uploadMode==='newNode'){g[nid]={image:imgData,forward:null,backward:null,left:null,right:null};document.getElementById('newNodeId').value=nid;document.getElementById('newNodeImage').value='Uploaded';save();updateNodeList();showStatus(`Created: ${nid}`,'success');}e.target.value='';};reader.readAsDataURL(file);}
+window.onload=init;
+    </script>
 </body>
-<script>
-    const img = document.querySelector('img');
-    const forwardBtn = document.querySelector('.forward');
-    const backBtn = document.querySelector('.back');
-    const leftBtn = document.querySelector('.left');
-    const rightBtn = document.querySelector('.right');
-    
-    let imgIndex = 0;
-    let imgList = ['1', '2', '3', '4', '5', '5l', '6', '6l', '6r'];
-    
-    // Get list of main images (without l or r suffix)
-    function getMainImages() {
-        return imgList.filter(name => !name.endsWith('l') && !name.endsWith('r'));
-    }
-    
-    function isMainImage(imageName) {
-        return !imageName.endsWith('l') && !imageName.endsWith('r');
-    }
-    
-    function getCurrentImageName() {
-        return imgList[imgIndex];
-    }
-    
-    function getBaseImageName() {
-        return getCurrentImageName().replace(/[lr]$/, '');
-    }
-    
-    function hasLeftImage() {
-        const baseName = getBaseImageName();
-        return imgList.includes(baseName + 'l');
-    }
-    
-    function hasRightImage() {
-        const baseName = getBaseImageName();
-        return imgList.includes(baseName + 'r');
-    }
-    
-    function getMainImageIndex() {
-        // Get the index of the main (center) image for current position
-        const baseName = getBaseImageName();
-        return imgList.indexOf(baseName);
-    }
-    
-    function updateImage() {
-        img.src = `${imgList[imgIndex]}.jpeg`;
-        
-        const currentName = getCurrentImageName();
-        const isOnLeftView = currentName.endsWith('l');
-        const isOnRightView = currentName.endsWith('r');
-        const isOnMainView = !isOnLeftView && !isOnRightView;
-        
-        // On main view: show left/right if available
-        if (isOnMainView) {
-            leftBtn.style.display = hasLeftImage() ? 'block' : 'none';
-            rightBtn.style.display = hasRightImage() ? 'block' : 'none';
-        }
-        // On left view: show only right arrow to go back to center
-        else if (isOnLeftView) {
-            leftBtn.style.display = 'none';
-            rightBtn.style.display = 'block';
-        }
-        // On right view: show only left arrow to go back to center
-        else if (isOnRightView) {
-            leftBtn.style.display = 'block';
-            rightBtn.style.display = 'none';
-        }
-        
-        // Disable forward/back buttons if at the end/start of main images
-        const mainImages = getMainImages();
-        const currentMainImage = getBaseImageName();
-        const mainImagePosition = mainImages.indexOf(currentMainImage);
-        
-        forwardBtn.disabled = mainImagePosition >= mainImages.length - 1;
-        backBtn.disabled = mainImagePosition <= 0;
-    }
-    
-    forwardBtn.addEventListener('click', () => {
-        const mainImages = getMainImages();
-        const currentMainImage = getBaseImageName();
-        const currentPosition = mainImages.indexOf(currentMainImage);
-        
-        if (currentPosition < mainImages.length - 1) {
-            const nextMainImage = mainImages[currentPosition + 1];
-            imgIndex = imgList.indexOf(nextMainImage);
-            updateImage();
-        }
-    });
-    
-    backBtn.addEventListener('click', () => {
-        const mainImages = getMainImages();
-        const currentMainImage = getBaseImageName();
-        const currentPosition = mainImages.indexOf(currentMainImage);
-        
-        if (currentPosition > 0) {
-            const prevMainImage = mainImages[currentPosition - 1];
-            imgIndex = imgList.indexOf(prevMainImage);
-            updateImage();
-        }
-    });
-    
-    leftBtn.addEventListener('click', () => {
-        const currentName = getCurrentImageName();
-        
-        // If on right view, go back to center
-        if (currentName.endsWith('r')) {
-            imgIndex = getMainImageIndex();
-        }
-        // If on main view, go to left view
-        else {
-            const baseName = getBaseImageName();
-            const leftImageName = baseName + 'l';
-            const leftIndex = imgList.indexOf(leftImageName);
-            if (leftIndex !== -1) {
-                imgIndex = leftIndex;
-            }
-        }
-        updateImage();
-    });
-    
-    rightBtn.addEventListener('click', () => {
-        const currentName = getCurrentImageName();
-        
-        // If on left view, go back to center
-        if (currentName.endsWith('l')) {
-            imgIndex = getMainImageIndex();
-        }
-        // If on main view, go to right view
-        else {
-            const baseName = getBaseImageName();
-            const rightImageName = baseName + 'r';
-            const rightIndex = imgList.indexOf(rightImageName);
-            if (rightIndex !== -1) {
-                imgIndex = rightIndex;
-            }
-        }
-        updateImage();
-    });
-    
-    // Initialize with the first image
-    updateImage();
-</script>
 </html>
