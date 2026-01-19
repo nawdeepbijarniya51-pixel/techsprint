@@ -235,6 +235,9 @@ function setDirection(d){const t=document.getElementById(`${d}Input`).value.trim
 function removeDirection(d){g[loc][d]=null;save();updateView();showStatus(`${d} removed`,'success');}
 function addNewNode(){const id=document.getElementById('newNodeId').value.trim();const img=document.getElementById('newNodeImage').value.trim();if(!id){showStatus('Enter ID','error');return;}if(g[id]){showStatus('Exists','error');return;}if(!img){showStatus('Upload image','error');return;}g[id]={image:img,forward:null,backward:null,left:null,right:null};save();updateNodeList();document.getElementById('newNodeId').value='';document.getElementById('newNodeImage').value='';showStatus(`Created ${id}`,'success');}
 function updateNodeList(){const nl=document.getElementById('nodeList');nl.innerHTML='';Object.keys(g).sort().forEach(id=>{const d=document.createElement('div');d.className='node-item';d.textContent=`Node ${id}`;d.onclick=()=>{loc=id;updateView();showStatus(`→ ${id}`,'success');};nl.appendChild(d);});}
+function exportEverything(){const data={graph:g,nodeCounter:nCnt,exportDate:new Date().toISOString()};const json=JSON.stringify(data,null,2);const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`campus-navigation-backup-${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(url);showStatus('All data exported! Upload to GitHub','success');}
+function downloadCurrentImage(){const n=g[loc];if(!n||!n.image){showStatus('No image to download','error');return;}const link=document.createElement('a');link.href=n.image;link.download=`node-${loc}-image.jpg`;link.click();showStatus(`Image for node ${loc} downloaded`,'success');}
+function downloadAllImages(){showStatus('Preparing ZIP... This may take a moment','success');setTimeout(()=>{const zip={};Object.keys(g).forEach(id=>{const node=g[id];if(node.image&&node.image.startsWith('data:')){zip[`node-${id}.jpg`]=node.image;}});const count=Object.keys(zip).length;if(count===0){showStatus('No images to download','error');return;}let downloaded=0;Object.keys(zip).forEach(filename=>{const link=document.createElement('a');link.href=zip[filename];link.download=filename;link.click();downloaded++;});showStatus(`${downloaded} images downloaded separately (browser doesn't support ZIP)`,downloaded>0?'success':'error');},100);}
 function save(){localforage.setItem('campusNav',g);}
 function showStatus(m,t){const s=document.getElementById('statusMessage');s.textContent=m;s.className=`status-message ${t}`;s.style.display='block';setTimeout(()=>s.style.display='none',4000);}
 let uploadMode=null,uploadDir=null;
@@ -245,3 +248,4 @@ window.onload=init;
     </script>
 </body>
 </html>
+
